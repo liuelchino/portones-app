@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "353034031865",
+    "project_id": "portones-asistencia",
+    "storage_bucket": "portones-asistencia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353034031865:android:cba428fd7ff29e7c630828",
+        "android_client_info": {
+          "package_name": "PORTONES.ASISTENCIAS.CTES"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0-9Y8Jfa6sfdxDJhIrvCMde49WraxJYM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
