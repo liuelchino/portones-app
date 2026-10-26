@@ -15,98 +15,95 @@ class PortonesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Portones Asistencia',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue, visualDensity: VisualDensity.adaptivePlatformDensity),
       home: const PantallaInicio(),
     );
   }
 }
 
-class PantallaInicio extends StatefulWidget {
+class PantallaInicio extends StatelessWidget {
   const PantallaInicio({super.key});
 
   @override
-  State<PantallaInicio> createState() => _PantallaInicioState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.garage, size: 100, color: Colors.blue),
+              const SizedBox(height: 20),
+              const Text('PORTONES ASISTENCIA', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue)),
+              const SizedBox(height: 50),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaCliente())),
+                icon: const Icon(Icons.person),
+                label: const Text('SOY CLIENTE / VECINO'),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20), textStyle: const TextStyle(fontSize: 18)),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaAdmin())),
+                icon: const Icon(Icons.admin_panel_settings),
+                label: const Text('SOY ADMINISTRADOR'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(vertical: 20), textStyle: const TextStyle(fontSize: 18)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _PantallaInicioState extends State<PantallaInicio> {
+class PantallaCliente extends StatefulWidget {
+  const PantallaCliente({super.key});
+  @override
+  State<PantallaCliente> createState() => _PantallaClienteState();
+}
+
+class _PantallaClienteState extends State<PantallaCliente> {
   final _direccionController = TextEditingController();
   final _claveController = TextEditingController();
   bool _cargando = false;
-  String _error = '';
 
   Future<void> _ingresar() async {
-    setState(() { _cargando = true; _error = ''; });
+    setState(() => _cargando = true);
     try {
-      final direccion = _direccionController.text.trim();
-      final clave = _claveController.text.trim();
-
-      final query = await FirebaseFirestore.instance
-          .collection('edificios')
-          .where('direccion', isEqualTo: direccion)
-          .where('clave_acceso', isEqualTo: clave)
-          .get();
+      final query = await FirebaseFirestore.instance.collection('edificios')
+          .where('direccion', isEqualTo: _direccionController.text.trim())
+          .where('clave_acceso', isEqualTo: _claveController.text.trim()).get();
 
       if (query.docs.isEmpty) {
-        setState(() { _error = 'Dirección o clave incorrecta'; _cargando = false; });
-        return;
-      }
-
-      final edificioId = query.docs.first.id;
-      final edificioData = query.docs.first.data();
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PantallaEdificio(edificioId: edificioId, edificioData: edificioData),
-          ),
-        );
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección o clave incorrecta')));
+      } else {
+        if (mounted) Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaReporte(edificioId: query.docs.first.id, edificioData: query.docs.first.data())));
       }
     } catch (e) {
-      setState(() { _error = 'Error de conexión: $e'; _cargando = false; });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
-    setState(() { _cargando = false; });
+    setState(() => _cargando = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Portones - Asistencia')),
+      appBar: AppBar(title: const Text('Acceso Cliente')),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.garage, size: 80, color: Colors.blue),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _direccionController,
-              decoration: const InputDecoration(labelText: 'Dirección del edificio', border: OutlineInputBorder()),
-            ),
+            TextField(controller: _direccionController, decoration: const InputDecoration(labelText: 'Dirección del edificio', border: OutlineInputBorder())),
             const SizedBox(height: 15),
-            TextField(
-              controller: _claveController,
-              decoration: const InputDecoration(labelText: 'Clave de acceso', border: OutlineInputBorder()),
-              obscureText: true,
-            ),
-            const SizedBox(height: 10),
-            if (_error.isNotEmpty) Text(_error, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _cargando ? null : _ingresar,
-                child: _cargando ? const CircularProgressIndicator(color: Colors.white) : const Text('INGRESAR', style: TextStyle(fontSize: 18)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Función GPS próximamente')));
-              },
-              child: const Text('📍 No sé la dirección (Usar GPS)'),
-            )
+            TextField(controller: _claveController, decoration: const InputDecoration(labelText: 'Clave de acceso', border: OutlineInputBorder()), obscureText: true),
+            const SizedBox(height: 30),
+            SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _cargando ? null : _ingresar, child: _cargando ? const CircularProgressIndicator(color: Colors.white) : const Text('INGRESAR'))),
           ],
         ),
       ),
@@ -114,11 +111,11 @@ class _PantallaInicioState extends State<PantallaInicio> {
   }
 }
 
-class PantallaEdificio extends StatelessWidget {
+class PantallaReporte extends StatelessWidget {
   final String edificioId;
   final Map<String, dynamic> edificioData;
 
-  const PantallaEdificio({super.key, required this.edificioId, required this.edificioData});
+  const PantallaReporte({super.key, required this.edificioId, required this.edificioData});
 
   @override
   Widget build(BuildContext context) {
@@ -127,34 +124,105 @@ class PantallaEdificio extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.location_on, color: Colors.red),
-              title: Text(edificioData['direccion'] ?? ''),
-              subtitle: Text('${edificioData['barrio'] ?? ''}, ${edificioData['ciudad'] ?? ''}'),
-            ),
-          ),
+          Card(child: ListTile(leading: const Icon(Icons.location_on, color: Colors.red), title: Text(edificioData['direccion'] ?? ''), subtitle: Text('${edificioData['barrio'] ?? ''}, ${edificioData['ciudad'] ?? ''}'))),
           const SizedBox(height: 20),
           const Text('ÚLTIMOS EVENTOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 10),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.check_circle, color: Colors.green),
-              title: Text('Sin eventos recientes'),
-              subtitle: Text('Los últimos 2 eventos aparecerán aquí'),
-            ),
-          ),
+          const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Sin eventos recientes'), subtitle: Text('Los últimos 2 eventos aparecerán aquí'))),
           const SizedBox(height: 30),
           ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Formulario de reclamo próximamente')));
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaFormularioReclamo(edificioId: edificioId, direccion: edificioData['direccion'] ?? ''))),
             icon: const Icon(Icons.add_alert),
             label: const Text('REPORTAR UN PROBLEMA'),
             style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
           ),
         ],
       ),
+    );
+  }
+}
+
+class PantallaFormularioReclamo extends StatefulWidget {
+  final String edificioId;
+  final String direccion;
+  const PantallaFormularioReclamo({super.key, required this.edificioId, required this.direccion});
+  @override
+  State<PantallaFormularioReclamo> createState() => _PantallaFormularioReclamoState();
+}
+
+class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
+  final _nombre = TextEditingController();
+  final _apellido = TextEditingController();
+  final _piso = TextEditingController();
+  final _depto = TextEditingController();
+  final _telefono = TextEditingController();
+  final _texto = TextEditingController();
+  bool _enviando = false;
+
+  Future<void> _enviar() async {
+    if (_nombre.text.isEmpty || _apellido.text.isEmpty || _texto.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completá nombre, apellido y descripción')));
+      return;
+    }
+    setState(() => _enviando = true);
+    try {
+      await FirebaseFirestore.instance.collection('solicitudes').add({
+        'edificioId': widget.edificioId,
+        'direccion': widget.direccion,
+        'nombre': _nombre.text.trim(),
+        'apellido': _apellido.text.trim(),
+        'piso': _piso.text.trim(),
+        'depto': _depto.text.trim(),
+        'telefono': _telefono.text.trim(),
+        'texto': _texto.text.trim(),
+        'fecha': FieldValue.serverTimestamp(),
+        'estado': 'pendiente',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _enviando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo Reclamo')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(controller: _nombre, decoration: const InputDecoration(labelText: 'Nombre', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _apellido, decoration: const InputDecoration(labelText: 'Apellido', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: _piso, decoration: const InputDecoration(labelText: 'Piso', border: OutlineInputBorder()))),
+            const SizedBox(width: 10),
+            Expanded(child: TextField(controller: _depto, decoration: const InputDecoration(labelText: 'Depto', border: OutlineInputBorder()))),
+          ]),
+          const SizedBox(height: 10),
+          TextField(controller: _telefono, decoration: const InputDecoration(labelText: 'Teléfono', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _texto, maxLines: 4, decoration: const InputDecoration(labelText: 'Descripción del problema', border: OutlineInputBorder())),
+          const SizedBox(height: 20),
+          ElevatedButton(onPressed: _enviando ? null : _enviar, child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR SOLICITUD')),
+        ],
+      ),
+    );
+  }
+}
+
+class PantallaAdmin extends StatelessWidget {
+  const PantallaAdmin({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Panel Administrador')),
+      body: const Center(child: Text('Aquí veremos los reclamos (Próximamente)')),
     );
   }
 }
