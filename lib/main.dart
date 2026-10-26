@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'dart:io';
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -214,6 +216,10 @@ class PantallaFormularioReclamo extends StatefulWidget {
 }
 
 class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
+  // ⚠️ DATOS DE CLOUDINARY
+  static const String CLOUD_NAME = 'eh9nas8t';
+  static const String UPLOAD_PRESET = 'portones_preset';
+
   final _nombre = TextEditingController();
   final _apellido = TextEditingController();
   final _piso = TextEditingController();
@@ -231,14 +237,39 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
     }
   }
 
+  Future<String?> _subirFotoACloudinary(File foto) async {
+    try {
+      final url = Uri.parse('https://api.cloudinary.com/v1_1/$CLOUD_NAME/upload');
+      final request = http.MultipartRequest('POST', url);
+      request.fields['upload_preset'] = UPLOAD_PRESET;
+      request.files.add(await http.MultipartFile.fromPath('file', foto.path));
+
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.toBytes();
+        final responseString = String.fromCharCodes(responseData);
+        final jsonMap = jsonDecode(responseString);
+        return jsonMap['secure_url'];
+      }
+    } catch (e) {
+      print('Error subiendo foto: $e');
+    }
+    return null;
+  }
+
   Future<void> _enviar() async {
     if (_nombre.text.isEmpty || _apellido.text.isEmpty || _texto.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completá nombre, apellido y descripción')));
       return;
     }
     setState(() => _enviando = true);
+
+    String? fotoUrl;
+    if (_fotoSeleccionada != null) {
+      fotoUrl = await _subirFotoACloudinary(_fotoSeleccionada!);
+    }
+
     try {
-      // Por ahora guardamos el texto y los datos. La foto se guardará en la nube en el próximo paso.
       await FirebaseFirestore.instance.collection('solicitudes').add({
         'edificioId': widget.edificioId,
         'direccion': widget.direccion,
@@ -250,7 +281,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
         'texto': _texto.text.trim(),
         'fecha': FieldValue.serverTimestamp(),
         'estado': 'pendiente',
-        'tieneFoto': _fotoSeleccionada != null,
+        'fotoUrl': fotoUrl,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
@@ -307,7 +338,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
           if (_fotoSeleccionada != null) ...[
             const SizedBox(height: 10),
             Image.file(_fotoSeleccionada!, height: 150),
-            const Text('Foto seleccionada', style: TextStyle(color: Colors.green)),
+            const Text('Foto lista para subir', style: TextStyle(color: Colors.green)),
           ],
           const SizedBox(height: 20),
           ElevatedButton(onPressed: _enviando ? null : _enviar, child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR SOLICITUD')),
@@ -338,6 +369,7 @@ class PantallaAdmin extends StatelessWidget {
             itemBuilder: (context, index) {
               final data = solicitudes[index].data() as Map<String, dynamic>;
               final docId = solicitudes[index].id;
+              final fotoUrl = data['fotoUrl'] as String?;
               
               return Card(
                 margin: const EdgeInsets.all(8),
@@ -350,7 +382,7 @@ class PantallaAdmin extends StatelessWidget {
                       Text('${data['nombre']} ${data['apellido']} - Piso ${data['piso']} Dpto ${data['depto']}'),
                       Text('Tel: ${data['telefono']}'),
                       Text('Problema: ${data['texto']}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                      if (data['tieneFoto'] == true) const Text('📷 Foto adjunta', style: TextStyle(color: Colors.blue)),
+                      if (fotoUrl != null) const Text('📷 Foto adjunta', style: TextStyle(color: Colors.blue)),
                       const SizedBox(height: 4),
                       Text('Estado: ${data['estado']}', style: TextStyle(fontWeight: FontWeight.bold, color: data['estado'] == 'pendiente' ? Colors.orange : Colors.green)),
                     ],
@@ -372,9 +404,11 @@ class PantallaAdmin extends StatelessWidget {
                               const SizedBox(height: 10),
                               const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
                               Text(data['texto'] ?? ''),
-                              if (data['tieneFoto'] == true) ...[
+                              if (fotoUrl != null) ...[
                                 const SizedBox(height: 10),
-                                const Text('📷 El cliente adjuntó una foto para este reclamo.', style: TextStyle(color: Colors.blue, fontStyle: FontStyle.italic)),
+                                const Text('Foto del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 5),
+                                Image.network(fotoUrl, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar la foto')),
                               ],
                               const Divider(),
                               const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
