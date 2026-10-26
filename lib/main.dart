@@ -216,7 +216,6 @@ class PantallaFormularioReclamo extends StatefulWidget {
 }
 
 class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
-  // ⚠️ DATOS DE CLOUDINARY
   static const String CLOUD_NAME = 'eh9nas8t';
   static const String UPLOAD_PRESET = 'portones_preset';
 
@@ -228,6 +227,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   final _texto = TextEditingController();
   bool _enviando = false;
   File? _fotoSeleccionada;
+  File? _videoSeleccionado;
 
   Future<void> _seleccionarFoto(ImageSource source) async {
     final picker = ImagePicker();
@@ -237,12 +237,20 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
     }
   }
 
-  Future<String?> _subirFotoACloudinary(File foto) async {
+  Future<void> _seleccionarVideo() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(seconds: 30));
+    if (pickedFile != null) {
+      setState(() => _videoSeleccionado = File(pickedFile.path));
+    }
+  }
+
+  Future<String?> _subirArchivoACloudinary(File archivo, String tipo) async {
     try {
-      final url = Uri.parse('https://api.cloudinary.com/v1_1/$CLOUD_NAME/upload');
+      final url = Uri.parse('https://api.cloudinary.com/v1_1/$CLOUD_NAME/$tipo/upload');
       final request = http.MultipartRequest('POST', url);
       request.fields['upload_preset'] = UPLOAD_PRESET;
-      request.files.add(await http.MultipartFile.fromPath('file', foto.path));
+      request.files.add(await http.MultipartFile.fromPath('file', archivo.path));
 
       final response = await request.send();
       if (response.statusCode == 200) {
@@ -252,7 +260,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
         return jsonMap['secure_url'];
       }
     } catch (e) {
-      print('Error subiendo foto: $e');
+      print('Error subiendo archivo: $e');
     }
     return null;
   }
@@ -265,8 +273,13 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
     setState(() => _enviando = true);
 
     String? fotoUrl;
+    String? videoUrl;
+    
     if (_fotoSeleccionada != null) {
-      fotoUrl = await _subirFotoACloudinary(_fotoSeleccionada!);
+      fotoUrl = await _subirArchivoACloudinary(_fotoSeleccionada!, 'image');
+    }
+    if (_videoSeleccionado != null) {
+      videoUrl = await _subirArchivoACloudinary(_videoSeleccionado!, 'video');
     }
 
     try {
@@ -282,6 +295,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
         'fecha': FieldValue.serverTimestamp(),
         'estado': 'pendiente',
         'fotoUrl': fotoUrl,
+        'videoUrl': videoUrl,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
@@ -338,9 +352,21 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
           if (_fotoSeleccionada != null) ...[
             const SizedBox(height: 10),
             Image.file(_fotoSeleccionada!, height: 150),
-            const Text('Foto lista para subir', style: TextStyle(color: Colors.green)),
           ],
           const SizedBox(height: 20),
+          const Text('Adjuntar Video (Opcional, máx 30s):'),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: _seleccionarVideo,
+            icon: const Icon(Icons.videocam),
+            label: const Text('Grabar Video'),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 45)),
+          ),
+          if (_videoSeleccionado != null) ...[
+            const SizedBox(height: 10),
+            const Text('✅ Video listo para subir', style: TextStyle(color: Colors.green)),
+          ],
+          const SizedBox(height: 30),
           ElevatedButton(onPressed: _enviando ? null : _enviar, child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR SOLICITUD')),
         ],
       ),
@@ -370,6 +396,7 @@ class PantallaAdmin extends StatelessWidget {
               final data = solicitudes[index].data() as Map<String, dynamic>;
               final docId = solicitudes[index].id;
               final fotoUrl = data['fotoUrl'] as String?;
+              final videoUrl = data['videoUrl'] as String?;
               
               return Card(
                 margin: const EdgeInsets.all(8),
@@ -383,6 +410,7 @@ class PantallaAdmin extends StatelessWidget {
                       Text('Tel: ${data['telefono']}'),
                       Text('Problema: ${data['texto']}', maxLines: 2, overflow: TextOverflow.ellipsis),
                       if (fotoUrl != null) const Text('📷 Foto adjunta', style: TextStyle(color: Colors.blue)),
+                      if (videoUrl != null) const Text('🎥 Video adjunto', style: TextStyle(color: Colors.purple)),
                       const SizedBox(height: 4),
                       Text('Estado: ${data['estado']}', style: TextStyle(fontWeight: FontWeight.bold, color: data['estado'] == 'pendiente' ? Colors.orange : Colors.green)),
                     ],
@@ -391,7 +419,7 @@ class PantallaAdmin extends StatelessWidget {
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: Text('Detalle del Reclamo'),
+                        title: const Text('Detalle del Reclamo'),
                         content: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,6 +437,13 @@ class PantallaAdmin extends StatelessWidget {
                                 const Text('Foto del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 5),
                                 Image.network(fotoUrl, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar la foto')),
+                              ],
+                              if (videoUrl != null) ...[
+                                const SizedBox(height: 10),
+                                const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 5),
+                                // Nota: En esta versión mostramos el enlace. En el próximo paso agregaremos un reproductor.
+                                SelectableText(videoUrl, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
                               ],
                               const Divider(),
                               const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
