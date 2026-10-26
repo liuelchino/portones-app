@@ -188,22 +188,53 @@ class PantallaReporte extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(edificioData['direccion'] ?? 'Edificio')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(child: ListTile(leading: const Icon(Icons.location_on, color: Colors.red), title: Text(edificioData['direccion'] ?? ''), subtitle: Text('${edificioData['barrio'] ?? ''}, ${edificioData['ciudad'] ?? ''}'))),
-          const SizedBox(height: 20),
-          const Text('ÚLTIMOS EVENTOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 10),
-          const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Sin eventos recientes'), subtitle: Text('Los últimos 2 eventos aparecerán aquí'))),
-          const SizedBox(height: 30),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaFormularioReclamo(edificioId: edificioId, direccion: edificioData['direccion'] ?? ''))),
-            icon: const Icon(Icons.add_alert),
-            label: const Text('REPORTAR UN PROBLEMA'),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).orderBy('fecha', descending: true).limit(2).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          
+          final solicitudes = snapshot.data!.docs;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(child: ListTile(leading: const Icon(Icons.location_on, color: Colors.red), title: Text(edificioData['direccion'] ?? ''), subtitle: Text('${edificioData['barrio'] ?? ''}, ${edificioData['ciudad'] ?? ''}'))),
+              const SizedBox(height: 20),
+              const Text('ÚLTIMOS EVENTOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 10),
+              if (solicitudes.isEmpty)
+                const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Sin eventos recientes'), subtitle: Text('Los últimos 2 eventos aparecerán aquí'))),
+              ...solicitudes.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final tieneRespuesta = data['respuestaAdmin'] != null && data['respuestaAdmin'].toString().isNotEmpty;
+                return Card(
+                  child: ListTile(
+                    leading: Icon(Icons.info, color: data['estado'] == 'resuelto' ? Colors.green : Colors.orange),
+                    title: Text(data['texto'] ?? 'Sin descripción', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Estado: ${data['estado'] ?? 'pendiente'}'),
+                        if (tieneRespuesta) ...[
+                          const Divider(),
+                          const Text('💬 Respuesta del administrador:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          Text(data['respuestaAdmin'], style: const TextStyle(color: Colors.blue)),
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaFormularioReclamo(edificioId: edificioId, direccion: edificioData['direccion'] ?? ''))),
+                icon: const Icon(Icons.add_alert),
+                label: const Text('REPORTAR UN PROBLEMA'),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -298,6 +329,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
         'estado': 'pendiente',
         'fotoUrl': fotoUrl,
         'videoUrl': videoUrl,
+        'respuestaAdmin': '',
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
@@ -420,74 +452,7 @@ class PantallaAdmin extends StatelessWidget {
                   onTap: () {
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Detalle del Reclamo'),
-                        content: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Dirección: ${data['direccion']}'),
-                              Text('Nombre: ${data['nombre']} ${data['apellido']}'),
-                              Text('Piso: ${data['piso']} - Dpto: ${data['depto']}'),
-                              Text('Teléfono: ${data['telefono']}'),
-                              const SizedBox(height: 10),
-                              const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text(data['texto'] ?? ''),
-                              if (fotoUrl != null) ...[
-                                const SizedBox(height: 10),
-                                const Text('Foto del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 5),
-                                Image.network(fotoUrl, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar la foto')),
-                              ],
-                              if (videoUrl != null) ...[
-                                const SizedBox(height: 10),
-                                const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 5),
-                                SizedBox(
-                                  height: 250,
-                                  child: ReproductorVideo(url: videoUrl),
-                                ),
-                              ],
-                              const Divider(),
-                              const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                children: [
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                                    onPressed: () async {
-                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'pendiente'});
-                                      if (context.mounted) Navigator.pop(context);
-                                    },
-                                    child: const Text('Pendiente'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                                    onPressed: () async {
-                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'en proceso'});
-                                      if (context.mounted) Navigator.pop(context);
-                                    },
-                                    child: const Text('En Proceso'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                                    onPressed: () async {
-                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'resuelto'});
-                                      if (context.mounted) Navigator.pop(context);
-                                    },
-                                    child: const Text('Resuelto'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
-                        ],
-                      ),
+                      builder: (context) => DialogoDetalleAdmin(data: data, docId: docId, fotoUrl: fotoUrl, videoUrl: videoUrl),
                     );
                   },
                 ),
@@ -500,7 +465,135 @@ class PantallaAdmin extends StatelessWidget {
   }
 }
 
-// WIDGET DEL REPRODUCTOR DE VIDEO
+// DIÁLOGO DE DETALLE CON RESPUESTA PARA EL ADMINISTRADOR
+class DialogoDetalleAdmin extends StatefulWidget {
+  final Map<String, dynamic> data;
+  final String docId;
+  final String? fotoUrl;
+  final String? videoUrl;
+
+  const DialogoDetalleAdmin({super.key, required this.data, required this.docId, this.fotoUrl, this.videoUrl});
+
+  @override
+  State<DialogoDetalleAdmin> createState() => _DialogoDetalleAdminState();
+}
+
+class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
+  final _respuestaController = TextEditingController();
+  bool _enviandoRespuesta = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _respuestaController.text = widget.data['respuestaAdmin'] ?? '';
+  }
+
+  Future<void> _guardarRespuesta() async {
+    setState(() => _enviandoRespuesta = true);
+    try {
+      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({
+        'respuestaAdmin': _respuestaController.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Respuesta enviada al cliente')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+    setState(() => _enviandoRespuesta = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Detalle del Reclamo'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Dirección: ${widget.data['direccion']}'),
+              Text('Nombre: ${widget.data['nombre']} ${widget.data['apellido']}'),
+              Text('Piso: ${widget.data['piso']} - Dpto: ${widget.data['depto']}'),
+              Text('Teléfono: ${widget.data['telefono']}'),
+              const SizedBox(height: 10),
+              const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.data['texto'] ?? ''),
+              if (widget.fotoUrl != null) ...[
+                const SizedBox(height: 10),
+                const Text('Foto del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Image.network(widget.fotoUrl!, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar la foto')),
+              ],
+              if (widget.videoUrl != null) ...[
+                const SizedBox(height: 10),
+                const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                SizedBox(height: 250, child: ReproductorVideo(url: widget.videoUrl!)),
+              ],
+              const Divider(),
+              const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'pendiente'});
+                      if (mounted) Navigator.pop(context);
+                    },
+                    child: const Text('Pendiente'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'en proceso'});
+                      if (mounted) Navigator.pop(context);
+                    },
+                    child: const Text('En Proceso'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'});
+                      if (mounted) Navigator.pop(context);
+                    },
+                    child: const Text('Resuelto'),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const Text('Responder al cliente:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _respuestaController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Escribe una respuesta...', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _enviandoRespuesta ? null : _guardarRespuesta,
+                  child: _enviandoRespuesta ? const CircularProgressIndicator() : const Text('ENVIAR RESPUESTA'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+      ],
+    );
+  }
+}
+
 class ReproductorVideo extends StatefulWidget {
   final String url;
   const ReproductorVideo({super.key, required this.url});
