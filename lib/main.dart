@@ -48,13 +48,75 @@ class PantallaInicio extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaAdmin())),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginAdmin())),
                 icon: const Icon(Icons.admin_panel_settings),
                 label: const Text('SOY ADMINISTRADOR'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(vertical: 20), textStyle: const TextStyle(fontSize: 18)),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// PANTALLA DE LOGIN PARA EL ADMINISTRADOR (CON CLAVE)
+class LoginAdmin extends StatefulWidget {
+  const LoginAdmin({super.key});
+  @override
+  State<LoginAdmin> createState() => _LoginAdminState();
+}
+
+class _LoginAdminState extends State<LoginAdmin> {
+  final _claveController = TextEditingController();
+  bool _cargando = false;
+
+  Future<void> _verificarClave() async {
+    setState(() => _cargando = true);
+    try {
+      final doc = await FirebaseFirestore.instance.collection('configuracion').doc('seguridad').get();
+      final claveCorrecta = doc.data()?['clave_admin'] ?? '';
+
+      if (_claveController.text.trim() == claveCorrecta) {
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PantallaAdmin()));
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clave de administrador incorrecta')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _cargando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Acceso Administrador')),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock, size: 80, color: Colors.blue),
+            const SizedBox(height: 30),
+            TextField(
+              controller: _claveController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Clave de Administrador', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _cargando ? null : _verificarClave,
+                child: _cargando ? const CircularProgressIndicator(color: Colors.white) : const Text('INGRESAR AL PANEL'),
+              ),
+            ),
+          ],
         ),
       ),
     );
