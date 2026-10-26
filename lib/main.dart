@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import 'dart:io';
 import 'dart:convert';
 
@@ -442,8 +444,10 @@ class PantallaAdmin extends StatelessWidget {
                                 const SizedBox(height: 10),
                                 const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 5),
-                                // Nota: En esta versión mostramos el enlace. En el próximo paso agregaremos un reproductor.
-                                SelectableText(videoUrl, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
+                                SizedBox(
+                                  height: 250,
+                                  child: ReproductorVideo(url: videoUrl),
+                                ),
                               ],
                               const Divider(),
                               const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -493,5 +497,45 @@ class PantallaAdmin extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+// WIDGET DEL REPRODUCTOR DE VIDEO
+class ReproductorVideo extends StatefulWidget {
+  final String url;
+  const ReproductorVideo({super.key, required this.url});
+
+  @override
+  State<ReproductorVideo> createState() => _ReproductorVideoState();
+}
+
+class _ReproductorVideoState extends State<ReproductorVideo> {
+  late VideoPlayerController _videoPlayerController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController,
+      autoPlay: false,
+      looping: false,
+      errorBuilder: (context, errorMessage) {
+        return Center(child: Text(errorMessage, style: const TextStyle(color: Colors.white)));
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Chewie(controller: _chewieController!);
   }
 }
