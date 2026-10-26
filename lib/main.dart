@@ -218,11 +218,71 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
 
 class PantallaAdmin extends StatelessWidget {
   const PantallaAdmin({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Panel Administrador')),
-      body: const Center(child: Text('Aquí veremos los reclamos (Próximamente)')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('solicitudes').orderBy('fecha', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          
+          final solicitudes = snapshot.data!.docs;
+          if (solicitudes.isEmpty) return const Center(child: Text('No hay solicitudes pendientes'));
+
+          return ListView.builder(
+            itemCount: solicitudes.length,
+            itemBuilder: (context, index) {
+              final data = solicitudes[index].data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  leading: const Icon(Icons.build, color: Colors.orange),
+                  title: Text(data['direccion'] ?? 'Sin dirección'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${data['nombre']} ${data['apellido']} - Piso ${data['piso']} Dpto ${data['depto']}'),
+                      Text('Tel: ${data['telefono']}'),
+                      Text('Problema: ${data['texto']}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text('Estado: ${data['estado']}', style: TextStyle(fontWeight: FontWeight.bold, color: data['estado'] == 'pendiente' ? Colors.orange : Colors.green)),
+                    ],
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Detalle del Reclamo'),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Dirección: ${data['direccion']}'),
+                              Text('Nombre: ${data['nombre']} ${data['apellido']}'),
+                              Text('Piso: ${data['piso']} - Dpto: ${data['depto']}'),
+                              Text('Teléfono: ${data['telefono']}'),
+                              const SizedBox(height: 10),
+                              const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Text(data['texto'] ?? ''),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
