@@ -422,10 +422,15 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   }
 }
 
-// PANTALLA DEL ADMINISTRADOR CON BOTÓN DE NUEVO EDIFICIO
-class PantallaAdmin extends StatelessWidget {
+// PANTALLA DEL ADMINISTRADOR CON BOTÓN DE NUEVO EDIFICIO Y LISTA DE EDIFICIOS
+class PantallaAdmin extends StatefulWidget {
   const PantallaAdmin({super.key});
 
+  @override
+  State<PantallaAdmin> createState() => _PantallaAdminState();
+}
+
+class _PantallaAdminState extends State<PantallaAdmin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -437,51 +442,195 @@ class PantallaAdmin extends StatelessWidget {
         child: const Icon(Icons.add_business),
         tooltip: 'Nuevo Edificio',
       ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text('📋 SOLICITUDES PENDIENTES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 10),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('solicitudes').orderBy('fecha', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final solicitudes = snapshot.data!.docs;
+              if (solicitudes.isEmpty) return const Text('No hay solicitudes pendientes');
+              return Column(
+                children: solicitudes.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final docId = doc.id;
+                  final fotoUrl = data['fotoUrl'] as String?;
+                  final videoUrl = data['videoUrl'] as String?;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.build, color: Colors.orange),
+                      title: Text(data['direccion'] ?? 'Sin dirección'),
+                      subtitle: Text('${data['nombre']} ${data['apellido']} - Estado: ${data['estado']}'),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => DialogoDetalleAdmin(data: data, docId: docId, fotoUrl: fotoUrl, videoUrl: videoUrl),
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const Divider(height: 40),
+          const Text('🏢 MIS EDIFICIOS (Toca para gestionar portones)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 10),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('edificios').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final edificios = snapshot.data!.docs;
+              if (edificios.isEmpty) return const Text('No hay edificios registrados');
+              return Column(
+                children: edificios.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.apartment, color: Colors.blue),
+                      title: Text(data['direccion'] ?? 'Sin dirección'),
+                      subtitle: Text(data['ciudad'] ?? ''),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaGestionPortones(edificioId: doc.id, edificioData: data)));
+                      },
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// PANTALLA PARA GESTIONAR LOS PORTONES DE UN EDIFICIO
+class PantallaGestionPortones extends StatelessWidget {
+  final String edificioId;
+  final Map<String, dynamic> edificioData;
+
+  const PantallaGestionPortones({super.key, required this.edificioId, required this.edificioData});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Portones: ${edificioData['direccion']}')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaNuevoPorton(edificioId: edificioId)));
+        },
+        child: const Icon(Icons.add),
+        tooltip: 'Nuevo Portón',
+      ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('solicitudes').orderBy('fecha', descending: true).snapshots(),
+        stream: FirebaseFirestore.instance.collection('portones').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          
-          final solicitudes = snapshot.data!.docs;
-          if (solicitudes.isEmpty) return const Center(child: Text('No hay solicitudes pendientes'));
+          final portones = snapshot.data!.docs;
+          if (portones.isEmpty) return const Center(child: Text('Este edificio no tiene portones registrados. Toca el + para agregar uno.'));
 
           return ListView.builder(
-            itemCount: solicitudes.length,
+            padding: const EdgeInsets.all(16),
+            itemCount: portones.length,
             itemBuilder: (context, index) {
-              final data = solicitudes[index].data() as Map<String, dynamic>;
-              final docId = solicitudes[index].id;
-              final fotoUrl = data['fotoUrl'] as String?;
-              final videoUrl = data['videoUrl'] as String?;
-              
+              final data = portones[index].data() as Map<String, dynamic>;
               return Card(
-                margin: const EdgeInsets.all(8),
                 child: ListTile(
-                  leading: const Icon(Icons.build, color: Colors.orange),
-                  title: Text(data['direccion'] ?? 'Sin dirección'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${data['nombre']} ${data['apellido']} - Piso ${data['piso']} Dpto ${data['depto']}'),
-                      Text('Tel: ${data['telefono']}'),
-                      Text('Problema: ${data['texto']}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                      if (fotoUrl != null) const Text('📷 Foto adjunta', style: TextStyle(color: Colors.blue)),
-                      if (videoUrl != null) const Text('🎥 Video adjunto', style: TextStyle(color: Colors.purple)),
-                      const SizedBox(height: 4),
-                      Text('Estado: ${data['estado']}', style: TextStyle(fontWeight: FontWeight.bold, color: data['estado'] == 'pendiente' ? Colors.orange : Colors.green)),
-                    ],
-                  ),
+                  leading: const Icon(Icons.garage, color: Colors.blue),
+                  title: Text(data['ubicacion'] ?? 'Portón sin nombre'),
+                  subtitle: Text('Marca: ${data['marca'] ?? '-'} | Modelo: ${data['modelo'] ?? '-'}'),
                   onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => DialogoDetalleAdmin(data: data, docId: docId, fotoUrl: fotoUrl, videoUrl: videoUrl),
-                    );
+                    // Próximamente: Ficha técnica completa e historial
                   },
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// PANTALLA PARA CREAR UN NUEVO PORTÓN
+class PantallaNuevoPorton extends StatefulWidget {
+  final String edificioId;
+  const PantallaNuevoPorton({super.key, required this.edificioId});
+
+  @override
+  State<PantallaNuevoPorton> createState() => _PantallaNuevoPortonState();
+}
+
+class _PantallaNuevoPortonState extends State<PantallaNuevoPorton> {
+  final _ubicacion = TextEditingController();
+  final _marca = TextEditingController();
+  final _modelo = TextEditingController();
+  final _tipo = TextEditingController();
+  final _motorMarca = TextEditingController();
+  final _motorHp = TextEditingController();
+  bool _guardando = false;
+
+  Future<void> _guardarPorton() async {
+    if (_ubicacion.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La ubicación (ej: Cochera) es obligatoria')));
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await FirebaseFirestore.instance.collection('portones').add({
+        'edificioId': widget.edificioId,
+        'ubicacion': _ubicacion.text.trim(),
+        'marca': _marca.text.trim(),
+        'modelo': _modelo.text.trim(),
+        'tipo': _tipo.text.trim(),
+        'motorMarca': _motorMarca.text.trim(),
+        'motorHp': _motorHp.text.trim(),
+        'fechaInstalacion': '',
+        'accesorios': '',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Portón creado correctamente')));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _guardando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo Portón')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(controller: _ubicacion, decoration: const InputDecoration(labelText: 'Ubicación (Ej: Cochera principal)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _marca, decoration: const InputDecoration(labelText: 'Marca del portón', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _modelo, decoration: const InputDecoration(labelText: 'Modelo', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _tipo, decoration: const InputDecoration(labelText: 'Tipo (Ej: Corredizo, Levadizo)', border: OutlineInputBorder())),
+          const SizedBox(height: 20),
+          const Text('Datos del Motor:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          TextField(controller: _motorMarca, decoration: const InputDecoration(labelText: 'Marca del motor', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _motorHp, decoration: const InputDecoration(labelText: 'HP / Potencia', border: OutlineInputBorder())),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: _guardando ? null : _guardarPorton,
+            child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR PORTÓN'),
+          ),
+        ],
       ),
     );
   }
@@ -628,102 +777,4 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
                 const SizedBox(height: 10),
                 const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
-                SizedBox(height: 250, child: ReproductorVideo(url: widget.videoUrl!)),
-              ],
-              const Divider(),
-              const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'pendiente'});
-                      if (mounted) Navigator.pop(context);
-                    },
-                    child: const Text('Pendiente'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'en proceso'});
-                      if (mounted) Navigator.pop(context);
-                    },
-                    child: const Text('En Proceso'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'});
-                      if (mounted) Navigator.pop(context);
-                    },
-                    child: const Text('Resuelto'),
-                  ),
-                ],
-              ),
-              const Divider(),
-              const Text('Responder al cliente:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _respuestaController,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Escribe una respuesta...', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _enviandoRespuesta ? null : _guardarRespuesta,
-                  child: _enviandoRespuesta ? const CircularProgressIndicator() : const Text('ENVIAR RESPUESTA'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
-      ],
-    );
-  }
-}
-
-class ReproductorVideo extends StatefulWidget {
-  final String url;
-  const ReproductorVideo({super.key, required this.url});
-
-  @override
-  State<ReproductorVideo> createState() => _ReproductorVideoState();
-}
-
-class _ReproductorVideoState extends State<ReproductorVideo> {
-  late VideoPlayerController _videoPlayerController;
-  ChewieController? _chewieController;
-
-  @override
-  void initState() {
-    super.initState();
-    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController,
-      autoPlay: false,
-      looping: false,
-      errorBuilder: (context, errorMessage) {
-        return Center(child: Text(errorMessage, style: const TextStyle(color: Colors.white)));
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _videoPlayerController.dispose();
-    _chewieController?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Chewie(controller: _chewieController!);
-  }
-}
+                SizedBox(height: 250, child: ReproductorVideo(url: widget.video
