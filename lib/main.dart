@@ -189,17 +189,11 @@ class PantallaReporte extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(edificioData['direccion'] ?? 'Edificio')),
       body: StreamBuilder<QuerySnapshot>(
-        // Consulta simple: solo por edificioId (sin orderBy para evitar error de índice)
         stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error al cargar: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          if (snapshot.hasError) return Center(child: Text('Error al cargar: ${snapshot.error}'));
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
-          // Obtenemos todos los documentos y los ordenamos manualmente en la app
           var solicitudes = snapshot.data!.docs;
           solicitudes.sort((a, b) {
             var dataA = a.data() as Map<String, dynamic>;
@@ -208,10 +202,9 @@ class PantallaReporte extends StatelessWidget {
             Timestamp? fechaB = dataB['fecha'] as Timestamp?;
             if (fechaA == null) return 1;
             if (fechaB == null) return -1;
-            return fechaB.compareTo(fechaA); // Descendente
+            return fechaB.compareTo(fechaA);
           });
           
-          // Tomamos solo los últimos 2
           if (solicitudes.length > 2) {
             solicitudes = solicitudes.take(2).toList();
           }
@@ -429,6 +422,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   }
 }
 
+// PANTALLA DEL ADMINISTRADOR CON BOTÓN DE NUEVO EDIFICIO
 class PantallaAdmin extends StatelessWidget {
   const PantallaAdmin({super.key});
 
@@ -436,6 +430,13 @@ class PantallaAdmin extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Panel Administrador')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaNuevoEdificio()));
+        },
+        child: const Icon(Icons.add_business),
+        tooltip: 'Nuevo Edificio',
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('solicitudes').orderBy('fecha', descending: true).snapshots(),
         builder: (context, snapshot) {
@@ -481,6 +482,79 @@ class PantallaAdmin extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// PANTALLA PARA CREAR UN NUEVO EDIFICIO
+class PantallaNuevoEdificio extends StatefulWidget {
+  const PantallaNuevoEdificio({super.key});
+
+  @override
+  State<PantallaNuevoEdificio> createState() => _PantallaNuevoEdificioState();
+}
+
+class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
+  final _direccion = TextEditingController();
+  final _barrio = TextEditingController();
+  final _ciudad = TextEditingController();
+  final _clave = TextEditingController();
+  final _adminNombre = TextEditingController();
+  final _adminTelefono = TextEditingController();
+  bool _guardando = false;
+
+  Future<void> _guardarEdificio() async {
+    if (_direccion.text.isEmpty || _clave.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección y clave son obligatorios')));
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await FirebaseFirestore.instance.collection('edificios').add({
+        'direccion': _direccion.text.trim(),
+        'barrio': _barrio.text.trim(),
+        'ciudad': _ciudad.text.trim(),
+        'clave_acceso': _clave.text.trim(),
+        'admin_nombre': _adminNombre.text.trim(),
+        'admin_telefono': _adminTelefono.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Edificio creado correctamente')));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _guardando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo Edificio')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(controller: _direccion, decoration: const InputDecoration(labelText: 'Dirección', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _barrio, decoration: const InputDecoration(labelText: 'Barrio', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _ciudad, decoration: const InputDecoration(labelText: 'Ciudad', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _clave, decoration: const InputDecoration(labelText: 'Clave de acceso (Ej: PORTON123)', border: OutlineInputBorder())),
+          const SizedBox(height: 20),
+          const Text('Datos del Administrador del Edificio:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          TextField(controller: _adminNombre, decoration: const InputDecoration(labelText: 'Nombre del administrador', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _adminTelefono, decoration: const InputDecoration(labelText: 'Teléfono del administrador', border: OutlineInputBorder())),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: _guardando ? null : _guardarEdificio,
+            child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR EDIFICIO'),
+          ),
+        ],
       ),
     );
   }
