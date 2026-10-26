@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -219,6 +221,15 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   final _telefono = TextEditingController();
   final _texto = TextEditingController();
   bool _enviando = false;
+  File? _fotoSeleccionada;
+
+  Future<void> _seleccionarFoto(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() => _fotoSeleccionada = File(pickedFile.path));
+    }
+  }
 
   Future<void> _enviar() async {
     if (_nombre.text.isEmpty || _apellido.text.isEmpty || _texto.text.isEmpty) {
@@ -227,6 +238,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
     }
     setState(() => _enviando = true);
     try {
+      // Por ahora guardamos el texto y los datos. La foto se guardará en la nube en el próximo paso.
       await FirebaseFirestore.instance.collection('solicitudes').add({
         'edificioId': widget.edificioId,
         'direccion': widget.direccion,
@@ -238,6 +250,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
         'texto': _texto.text.trim(),
         'fecha': FieldValue.serverTimestamp(),
         'estado': 'pendiente',
+        'tieneFoto': _fotoSeleccionada != null,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
@@ -269,6 +282,33 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
           TextField(controller: _telefono, decoration: const InputDecoration(labelText: 'Teléfono', border: OutlineInputBorder())),
           const SizedBox(height: 10),
           TextField(controller: _texto, maxLines: 4, decoration: const InputDecoration(labelText: 'Descripción del problema', border: OutlineInputBorder())),
+          const SizedBox(height: 20),
+          const Text('Adjuntar Foto (Opcional):'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _seleccionarFoto(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Cámara'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _seleccionarFoto(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Galería'),
+                ),
+              ),
+            ],
+          ),
+          if (_fotoSeleccionada != null) ...[
+            const SizedBox(height: 10),
+            Image.file(_fotoSeleccionada!, height: 150),
+            const Text('Foto seleccionada', style: TextStyle(color: Colors.green)),
+          ],
           const SizedBox(height: 20),
           ElevatedButton(onPressed: _enviando ? null : _enviar, child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR SOLICITUD')),
         ],
@@ -310,6 +350,7 @@ class PantallaAdmin extends StatelessWidget {
                       Text('${data['nombre']} ${data['apellido']} - Piso ${data['piso']} Dpto ${data['depto']}'),
                       Text('Tel: ${data['telefono']}'),
                       Text('Problema: ${data['texto']}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                      if (data['tieneFoto'] == true) const Text('📷 Foto adjunta', style: TextStyle(color: Colors.blue)),
                       const SizedBox(height: 4),
                       Text('Estado: ${data['estado']}', style: TextStyle(fontWeight: FontWeight.bold, color: data['estado'] == 'pendiente' ? Colors.orange : Colors.green)),
                     ],
@@ -331,6 +372,10 @@ class PantallaAdmin extends StatelessWidget {
                               const SizedBox(height: 10),
                               const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
                               Text(data['texto'] ?? ''),
+                              if (data['tieneFoto'] == true) ...[
+                                const SizedBox(height: 10),
+                                const Text('📷 El cliente adjuntó una foto para este reclamo.', style: TextStyle(color: Colors.blue, fontStyle: FontStyle.italic)),
+                              ],
                               const Divider(),
                               const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
                               const SizedBox(height: 10),
