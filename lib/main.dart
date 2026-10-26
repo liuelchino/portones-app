@@ -61,7 +61,6 @@ class PantallaInicio extends StatelessWidget {
   }
 }
 
-// PANTALLA DE LOGIN PARA EL ADMINISTRADOR (CON CLAVE)
 class LoginAdmin extends StatefulWidget {
   const LoginAdmin({super.key});
   @override
@@ -298,6 +297,8 @@ class PantallaAdmin extends StatelessWidget {
             itemCount: solicitudes.length,
             itemBuilder: (context, index) {
               final data = solicitudes[index].data() as Map<String, dynamic>;
+              final docId = solicitudes[index].id;
+              
               return Card(
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
@@ -330,6 +331,38 @@ class PantallaAdmin extends StatelessWidget {
                               const SizedBox(height: 10),
                               const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
                               Text(data['texto'] ?? ''),
+                              const Divider(),
+                              const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'pendiente'});
+                                      if (context.mounted) Navigator.pop(context);
+                                    },
+                                    child: const Text('Pendiente'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'en proceso'});
+                                      if (context.mounted) Navigator.pop(context);
+                                    },
+                                    child: const Text('En Proceso'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance.collection('solicitudes').doc(docId).update({'estado': 'resuelto'});
+                                      if (context.mounted) Navigator.pop(context);
+                                    },
+                                    child: const Text('Resuelto'),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
