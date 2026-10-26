@@ -16,7 +16,6 @@ void main() async {
 
 class PortonesApp extends StatelessWidget {
   const PortonesApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -30,7 +29,6 @@ class PortonesApp extends StatelessWidget {
 
 class PantallaInicio extends StatelessWidget {
   const PantallaInicio({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,13 +80,10 @@ class _LoginAdminState extends State<LoginAdmin> {
     try {
       final doc = await FirebaseFirestore.instance.collection('configuracion').doc('seguridad').get();
       final claveCorrecta = doc.data()?['clave_admin'] ?? '';
-
       if (_claveController.text.trim() == claveCorrecta) {
-        if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PantallaAdmin()));
-        }
+        if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PantallaAdmin()));
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clave de administrador incorrecta')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clave incorrecta')));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -107,20 +102,9 @@ class _LoginAdminState extends State<LoginAdmin> {
           children: [
             const Icon(Icons.lock, size: 80, color: Colors.blue),
             const SizedBox(height: 30),
-            TextField(
-              controller: _claveController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Clave de Administrador', border: OutlineInputBorder()),
-            ),
+            TextField(controller: _claveController, obscureText: true, decoration: const InputDecoration(labelText: 'Clave de Administrador', border: OutlineInputBorder())),
             const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _cargando ? null : _verificarClave,
-                child: _cargando ? const CircularProgressIndicator(color: Colors.white) : const Text('INGRESAR AL PANEL'),
-              ),
-            ),
+            SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _cargando ? null : _verificarClave, child: _cargando ? const CircularProgressIndicator(color: Colors.white) : const Text('INGRESAR'))),
           ],
         ),
       ),
@@ -142,10 +126,7 @@ class _PantallaClienteState extends State<PantallaCliente> {
   Future<void> _ingresar() async {
     setState(() => _cargando = true);
     try {
-      final query = await FirebaseFirestore.instance.collection('edificios')
-          .where('direccion', isEqualTo: _direccionController.text.trim())
-          .where('clave_acceso', isEqualTo: _claveController.text.trim()).get();
-
+      final query = await FirebaseFirestore.instance.collection('edificios').where('direccion', isEqualTo: _direccionController.text.trim()).where('clave_acceso', isEqualTo: _claveController.text.trim()).get();
       if (query.docs.isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección o clave incorrecta')));
       } else {
@@ -181,7 +162,6 @@ class _PantallaClienteState extends State<PantallaCliente> {
 class PantallaReporte extends StatelessWidget {
   final String edificioId;
   final Map<String, dynamic> edificioData;
-
   const PantallaReporte({super.key, required this.edificioId, required this.edificioData});
 
   @override
@@ -191,9 +171,8 @@ class PantallaReporte extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) return Center(child: Text('Error al cargar: ${snapshot.error}'));
+          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          
           var solicitudes = snapshot.data!.docs;
           solicitudes.sort((a, b) {
             var dataA = a.data() as Map<String, dynamic>;
@@ -204,11 +183,7 @@ class PantallaReporte extends StatelessWidget {
             if (fechaB == null) return -1;
             return fechaB.compareTo(fechaA);
           });
-          
-          if (solicitudes.length > 2) {
-            solicitudes = solicitudes.take(2).toList();
-          }
-
+          if (solicitudes.length > 2) solicitudes = solicitudes.take(2).toList();
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -216,8 +191,7 @@ class PantallaReporte extends StatelessWidget {
               const SizedBox(height: 20),
               const Text('ÚLTIMOS EVENTOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 10),
-              if (solicitudes.isEmpty)
-                const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Sin eventos recientes'), subtitle: Text('Los últimos 2 eventos aparecerán aquí'))),
+              if (solicitudes.isEmpty) const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Sin eventos recientes'), subtitle: Text('Los últimos 2 eventos aparecerán aquí'))),
               ...solicitudes.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final tieneRespuesta = data['respuestaAdmin'] != null && data['respuestaAdmin'].toString().isNotEmpty;
@@ -265,7 +239,6 @@ class PantallaFormularioReclamo extends StatefulWidget {
 class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   static const String CLOUD_NAME = 'eh9nas8t';
   static const String UPLOAD_PRESET = 'portones_preset';
-
   final _nombre = TextEditingController();
   final _apellido = TextEditingController();
   final _piso = TextEditingController();
@@ -279,17 +252,13 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   Future<void> _seleccionarFoto(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() => _fotoSeleccionada = File(pickedFile.path));
-    }
+    if (pickedFile != null) setState(() => _fotoSeleccionada = File(pickedFile.path));
   }
 
   Future<void> _seleccionarVideo() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(seconds: 30));
-    if (pickedFile != null) {
-      setState(() => _videoSeleccionado = File(pickedFile.path));
-    }
+    if (pickedFile != null) setState(() => _videoSeleccionado = File(pickedFile.path));
   }
 
   Future<String?> _subirArchivoACloudinary(File archivo, String tipo) async {
@@ -298,17 +267,13 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
       final request = http.MultipartRequest('POST', url);
       request.fields['upload_preset'] = UPLOAD_PRESET;
       request.files.add(await http.MultipartFile.fromPath('file', archivo.path));
-
       final response = await request.send();
       if (response.statusCode == 200) {
         final responseData = await response.stream.toBytes();
-        final responseString = String.fromCharCodes(responseData);
-        final jsonMap = jsonDecode(responseString);
+        final jsonMap = jsonDecode(String.fromCharCodes(responseData));
         return jsonMap['secure_url'];
       }
-    } catch (e) {
-      print('Error subiendo archivo: $e');
-    }
+    } catch (e) { print('Error: $e'); }
     return null;
   }
 
@@ -318,35 +283,19 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
       return;
     }
     setState(() => _enviando = true);
-
     String? fotoUrl;
     String? videoUrl;
-    
-    if (_fotoSeleccionada != null) {
-      fotoUrl = await _subirArchivoACloudinary(_fotoSeleccionada!, 'image');
-    }
-    if (_videoSeleccionado != null) {
-      videoUrl = await _subirArchivoACloudinary(_videoSeleccionado!, 'video');
-    }
-
+    if (_fotoSeleccionada != null) fotoUrl = await _subirArchivoACloudinary(_fotoSeleccionada!, 'image');
+    if (_videoSeleccionado != null) videoUrl = await _subirArchivoACloudinary(_videoSeleccionado!, 'video');
     try {
       await FirebaseFirestore.instance.collection('solicitudes').add({
-        'edificioId': widget.edificioId,
-        'direccion': widget.direccion,
-        'nombre': _nombre.text.trim(),
-        'apellido': _apellido.text.trim(),
-        'piso': _piso.text.trim(),
-        'depto': _depto.text.trim(),
-        'telefono': _telefono.text.trim(),
-        'texto': _texto.text.trim(),
-        'fecha': FieldValue.serverTimestamp(),
-        'estado': 'pendiente',
-        'fotoUrl': fotoUrl,
-        'videoUrl': videoUrl,
-        'respuestaAdmin': '',
+        'edificioId': widget.edificioId, 'direccion': widget.direccion, 'nombre': _nombre.text.trim(),
+        'apellido': _apellido.text.trim(), 'piso': _piso.text.trim(), 'depto': _depto.text.trim(),
+        'telefono': _telefono.text.trim(), 'texto': _texto.text.trim(), 'fecha': FieldValue.serverTimestamp(),
+        'estado': 'pendiente', 'fotoUrl': fotoUrl, 'videoUrl': videoUrl, 'respuestaAdmin': '',
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada correctamente')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Solicitud enviada')));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -378,42 +327,17 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
           const SizedBox(height: 20),
           const Text('Adjuntar Foto (Opcional):'),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _seleccionarFoto(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Cámara'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _seleccionarFoto(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galería'),
-                ),
-              ),
-            ],
-          ),
-          if (_fotoSeleccionada != null) ...[
-            const SizedBox(height: 10),
-            Image.file(_fotoSeleccionada!, height: 150),
-          ],
+          Row(children: [
+            Expanded(child: ElevatedButton.icon(onPressed: () => _seleccionarFoto(ImageSource.camera), icon: const Icon(Icons.camera_alt), label: const Text('Cámara'))),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton.icon(onPressed: () => _seleccionarFoto(ImageSource.gallery), icon: const Icon(Icons.photo_library), label: const Text('Galería'))),
+          ]),
+          if (_fotoSeleccionada != null) ...[const SizedBox(height: 10), Image.file(_fotoSeleccionada!, height: 150)],
           const SizedBox(height: 20),
           const Text('Adjuntar Video (Opcional, máx 30s):'),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: _seleccionarVideo,
-            icon: const Icon(Icons.videocam),
-            label: const Text('Grabar Video'),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 45)),
-          ),
-          if (_videoSeleccionado != null) ...[
-            const SizedBox(height: 10),
-            const Text('✅ Video listo para subir', style: TextStyle(color: Colors.green)),
-          ],
+          ElevatedButton.icon(onPressed: _seleccionarVideo, icon: const Icon(Icons.videocam), label: const Text('Grabar Video'), style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 45))),
+          if (_videoSeleccionado != null) ...[const SizedBox(height: 10), const Text('✅ Video listo para subir', style: TextStyle(color: Colors.green))],
           const SizedBox(height: 30),
           ElevatedButton(onPressed: _enviando ? null : _enviar, child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR SOLICITUD')),
         ],
@@ -422,10 +346,8 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
   }
 }
 
-// PANTALLA DEL ADMINISTRADOR CON BOTÓN DE NUEVO EDIFICIO Y LISTA DE EDIFICIOS
 class PantallaAdmin extends StatefulWidget {
   const PantallaAdmin({super.key});
-
   @override
   State<PantallaAdmin> createState() => _PantallaAdminState();
 }
@@ -436,11 +358,8 @@ class _PantallaAdminState extends State<PantallaAdmin> {
     return Scaffold(
       appBar: AppBar(title: const Text('Panel Administrador')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaNuevoEdificio()));
-        },
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaNuevoEdificio())),
         child: const Icon(Icons.add_business),
-        tooltip: 'Nuevo Edificio',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -456,21 +375,13 @@ class _PantallaAdminState extends State<PantallaAdmin> {
               return Column(
                 children: solicitudes.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
-                  final docId = doc.id;
-                  final fotoUrl = data['fotoUrl'] as String?;
-                  final videoUrl = data['videoUrl'] as String?;
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: const Icon(Icons.build, color: Colors.orange),
                       title: Text(data['direccion'] ?? 'Sin dirección'),
                       subtitle: Text('${data['nombre']} ${data['apellido']} - Estado: ${data['estado']}'),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => DialogoDetalleAdmin(data: data, docId: docId, fotoUrl: fotoUrl, videoUrl: videoUrl),
-                        );
-                      },
+                      onTap: () => showDialog(context: context, builder: (context) => DialogoDetalleAdmin(data: data, docId: doc.id, fotoUrl: data['fotoUrl'], videoUrl: data['videoUrl'])),
                     ),
                   );
                 }).toList(),
@@ -478,7 +389,7 @@ class _PantallaAdminState extends State<PantallaAdmin> {
             },
           ),
           const Divider(height: 40),
-          const Text('🏢 MIS EDIFICIOS (Toca para gestionar portones)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const Text('🏢 MIS EDIFICIOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 10),
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('edificios').snapshots(),
@@ -496,9 +407,7 @@ class _PantallaAdminState extends State<PantallaAdmin> {
                       title: Text(data['direccion'] ?? 'Sin dirección'),
                       subtitle: Text(data['ciudad'] ?? ''),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaGestionPortones(edificioId: doc.id, edificioData: data)));
-                      },
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaGestionPortones(edificioId: doc.id, edificioData: data))),
                     ),
                   );
                 }).toList(),
@@ -511,11 +420,9 @@ class _PantallaAdminState extends State<PantallaAdmin> {
   }
 }
 
-// PANTALLA PARA GESTIONAR LOS PORTONES DE UN EDIFICIO
 class PantallaGestionPortones extends StatelessWidget {
   final String edificioId;
   final Map<String, dynamic> edificioData;
-
   const PantallaGestionPortones({super.key, required this.edificioId, required this.edificioData});
 
   @override
@@ -523,19 +430,15 @@ class PantallaGestionPortones extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text('Portones: ${edificioData['direccion']}')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaNuevoPorton(edificioId: edificioId)));
-        },
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaNuevoPorton(edificioId: edificioId))),
         child: const Icon(Icons.add),
-        tooltip: 'Nuevo Portón',
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('portones').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final portones = snapshot.data!.docs;
-          if (portones.isEmpty) return const Center(child: Text('Este edificio no tiene portones registrados. Toca el + para agregar uno.'));
-
+          if (portones.isEmpty) return const Center(child: Text('No hay portones. Toca el + para agregar uno.'));
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: portones.length,
@@ -544,11 +447,8 @@ class PantallaGestionPortones extends StatelessWidget {
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.garage, color: Colors.blue),
-                  title: Text(data['ubicacion'] ?? 'Portón sin nombre'),
+                  title: Text(data['ubicacion'] ?? 'Sin nombre'),
                   subtitle: Text('Marca: ${data['marca'] ?? '-'} | Modelo: ${data['modelo'] ?? '-'}'),
-                  onTap: () {
-                    // Próximamente: Ficha técnica completa e historial
-                  },
                 ),
               );
             },
@@ -559,11 +459,9 @@ class PantallaGestionPortones extends StatelessWidget {
   }
 }
 
-// PANTALLA PARA CREAR UN NUEVO PORTÓN
 class PantallaNuevoPorton extends StatefulWidget {
   final String edificioId;
   const PantallaNuevoPorton({super.key, required this.edificioId});
-
   @override
   State<PantallaNuevoPorton> createState() => _PantallaNuevoPortonState();
 }
@@ -579,29 +477,20 @@ class _PantallaNuevoPortonState extends State<PantallaNuevoPorton> {
 
   Future<void> _guardarPorton() async {
     if (_ubicacion.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La ubicación (ej: Cochera) es obligatoria')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La ubicación es obligatoria')));
       return;
     }
     setState(() => _guardando = true);
     try {
       await FirebaseFirestore.instance.collection('portones').add({
-        'edificioId': widget.edificioId,
-        'ubicacion': _ubicacion.text.trim(),
-        'marca': _marca.text.trim(),
-        'modelo': _modelo.text.trim(),
-        'tipo': _tipo.text.trim(),
-        'motorMarca': _motorMarca.text.trim(),
-        'motorHp': _motorHp.text.trim(),
-        'fechaInstalacion': '',
-        'accesorios': '',
+        'edificioId': widget.edificioId, 'ubicacion': _ubicacion.text.trim(), 'marca': _marca.text.trim(),
+        'modelo': _modelo.text.trim(), 'tipo': _tipo.text.trim(), 'motorMarca': _motorMarca.text.trim(), 'motorHp': _motorHp.text.trim(),
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Portón creado correctamente')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Portón creado')));
         Navigator.pop(context);
       }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); }
     setState(() => _guardando = false);
   }
 
@@ -612,13 +501,13 @@ class _PantallaNuevoPortonState extends State<PantallaNuevoPorton> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(controller: _ubicacion, decoration: const InputDecoration(labelText: 'Ubicación (Ej: Cochera principal)', border: OutlineInputBorder())),
+          TextField(controller: _ubicacion, decoration: const InputDecoration(labelText: 'Ubicación (Ej: Cochera)', border: OutlineInputBorder())),
           const SizedBox(height: 10),
-          TextField(controller: _marca, decoration: const InputDecoration(labelText: 'Marca del portón', border: OutlineInputBorder())),
+          TextField(controller: _marca, decoration: const InputDecoration(labelText: 'Marca', border: OutlineInputBorder())),
           const SizedBox(height: 10),
           TextField(controller: _modelo, decoration: const InputDecoration(labelText: 'Modelo', border: OutlineInputBorder())),
           const SizedBox(height: 10),
-          TextField(controller: _tipo, decoration: const InputDecoration(labelText: 'Tipo (Ej: Corredizo, Levadizo)', border: OutlineInputBorder())),
+          TextField(controller: _tipo, decoration: const InputDecoration(labelText: 'Tipo (Corredizo/Levadizo)', border: OutlineInputBorder())),
           const SizedBox(height: 20),
           const Text('Datos del Motor:', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
@@ -626,20 +515,15 @@ class _PantallaNuevoPortonState extends State<PantallaNuevoPorton> {
           const SizedBox(height: 10),
           TextField(controller: _motorHp, decoration: const InputDecoration(labelText: 'HP / Potencia', border: OutlineInputBorder())),
           const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: _guardando ? null : _guardarPorton,
-            child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR PORTÓN'),
-          ),
+          ElevatedButton(onPressed: _guardando ? null : _guardarPorton, child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR PORTÓN')),
         ],
       ),
     );
   }
 }
 
-// PANTALLA PARA CREAR UN NUEVO EDIFICIO
 class PantallaNuevoEdificio extends StatefulWidget {
   const PantallaNuevoEdificio({super.key});
-
   @override
   State<PantallaNuevoEdificio> createState() => _PantallaNuevoEdificioState();
 }
@@ -655,26 +539,20 @@ class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
 
   Future<void> _guardarEdificio() async {
     if (_direccion.text.isEmpty || _clave.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección y clave son obligatorios')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección y clave obligatorias')));
       return;
     }
     setState(() => _guardando = true);
     try {
       await FirebaseFirestore.instance.collection('edificios').add({
-        'direccion': _direccion.text.trim(),
-        'barrio': _barrio.text.trim(),
-        'ciudad': _ciudad.text.trim(),
-        'clave_acceso': _clave.text.trim(),
-        'admin_nombre': _adminNombre.text.trim(),
-        'admin_telefono': _adminTelefono.text.trim(),
+        'direccion': _direccion.text.trim(), 'barrio': _barrio.text.trim(), 'ciudad': _ciudad.text.trim(),
+        'clave_acceso': _clave.text.trim(), 'admin_nombre': _adminNombre.text.trim(), 'admin_telefono': _adminTelefono.text.trim(),
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Edificio creado correctamente')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Edificio creado')));
         Navigator.pop(context);
       }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); }
     setState(() => _guardando = false);
   }
 
@@ -691,33 +569,27 @@ class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
           const SizedBox(height: 10),
           TextField(controller: _ciudad, decoration: const InputDecoration(labelText: 'Ciudad', border: OutlineInputBorder())),
           const SizedBox(height: 10),
-          TextField(controller: _clave, decoration: const InputDecoration(labelText: 'Clave de acceso (Ej: PORTON123)', border: OutlineInputBorder())),
+          TextField(controller: _clave, decoration: const InputDecoration(labelText: 'Clave de acceso', border: OutlineInputBorder())),
           const SizedBox(height: 20),
-          const Text('Datos del Administrador del Edificio:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('Datos del Administrador:', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           TextField(controller: _adminNombre, decoration: const InputDecoration(labelText: 'Nombre del administrador', border: OutlineInputBorder())),
           const SizedBox(height: 10),
           TextField(controller: _adminTelefono, decoration: const InputDecoration(labelText: 'Teléfono del administrador', border: OutlineInputBorder())),
           const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: _guardando ? null : _guardarEdificio,
-            child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR EDIFICIO'),
-          ),
+          ElevatedButton(onPressed: _guardando ? null : _guardarEdificio, child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR EDIFICIO')),
         ],
       ),
     );
   }
 }
 
-// DIÁLOGO DE DETALLE CON RESPUESTA PARA EL ADMINISTRADOR
 class DialogoDetalleAdmin extends StatefulWidget {
   final Map<String, dynamic> data;
   final String docId;
   final String? fotoUrl;
   final String? videoUrl;
-
   const DialogoDetalleAdmin({super.key, required this.data, required this.docId, this.fotoUrl, this.videoUrl});
-
   @override
   State<DialogoDetalleAdmin> createState() => _DialogoDetalleAdminState();
 }
@@ -735,17 +607,9 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
   Future<void> _guardarRespuesta() async {
     setState(() => _enviandoRespuesta = true);
     try {
-      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({
-        'respuestaAdmin': _respuestaController.text.trim(),
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Respuesta enviada al cliente')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
+      await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'respuestaAdmin': _respuestaController.text.trim()});
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Respuesta enviada')));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); }
     setState(() => _enviandoRespuesta = false);
   }
 
@@ -769,12 +633,77 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
               Text(widget.data['texto'] ?? ''),
               if (widget.fotoUrl != null) ...[
                 const SizedBox(height: 10),
-                const Text('Foto del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Foto:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
-                Image.network(widget.fotoUrl!, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar la foto')),
+                Image.network(widget.fotoUrl!, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar foto')),
               ],
               if (widget.videoUrl != null) ...[
                 const SizedBox(height: 10),
-                const Text('Video del problema:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Video:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
-                SizedBox(height: 250, child: ReproductorVideo(url: widget.video
+                SizedBox(height: 250, child: ReproductorVideo(url: widget.videoUrl!)),
+              ],
+              const Divider(),
+              const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'pendiente'}); if (mounted) Navigator.pop(context); }, child: const Text('Pendiente')),
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'en proceso'}); if (mounted) Navigator.pop(context); }, child: const Text('En Proceso')),
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'}); if (mounted) Navigator.pop(context); }, child: const Text('Resuelto')),
+                ],
+              ),
+              const Divider(),
+              const Text('Responder al cliente:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              TextField(controller: _respuestaController, maxLines: 3, decoration: const InputDecoration(labelText: 'Escribe una respuesta...', border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _enviandoRespuesta ? null : _guardarRespuesta, child: _enviandoRespuesta ? const CircularProgressIndicator() : const Text('ENVIAR RESPUESTA'))),
+            ],
+          ),
+        ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
+    );
+  }
+}
+
+class ReproductorVideo extends StatefulWidget {
+  final String url;
+  const ReproductorVideo({super.key, required this.url});
+  @override
+  State<ReproductorVideo> createState() => _ReproductorVideoState();
+}
+
+class _ReproductorVideoState  extends State<ReproductorVideo> {
+  late VideoPlayerController _videoPlayerController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController,
+      autoPlay: false,
+      looping: false,
+      errorBuilder: (context, errorMessage) {
+        return Center(child: Text(errorMessage, style: const TextStyle(color: Colors.white)));
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Chewie(controller: _chewieController!);
+  }
+}
+  
