@@ -189,11 +189,32 @@ class PantallaReporte extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(edificioData['direccion'] ?? 'Edificio')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).orderBy('fecha', descending: true).limit(2).snapshots(),
+        // Consulta simple: solo por edificioId (sin orderBy para evitar error de índice)
+        stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) {
+            return Center(child: Text('Error al cargar: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           
-          final solicitudes = snapshot.data!.docs;
+          // Obtenemos todos los documentos y los ordenamos manualmente en la app
+          var solicitudes = snapshot.data!.docs;
+          solicitudes.sort((a, b) {
+            var dataA = a.data() as Map<String, dynamic>;
+            var dataB = b.data() as Map<String, dynamic>;
+            Timestamp? fechaA = dataA['fecha'] as Timestamp?;
+            Timestamp? fechaB = dataB['fecha'] as Timestamp?;
+            if (fechaA == null) return 1;
+            if (fechaB == null) return -1;
+            return fechaB.compareTo(fechaA); // Descendente
+          });
+          
+          // Tomamos solo los últimos 2
+          if (solicitudes.length > 2) {
+            solicitudes = solicitudes.take(2).toList();
+          }
 
           return ListView(
             padding: const EdgeInsets.all(16),
