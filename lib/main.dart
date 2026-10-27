@@ -669,6 +669,45 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
           ),
         ),
       ),
-           actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
+    );
+  }
+}
+
+class ReproductorVideo extends StatefulWidget {
+  final String url;
+  const ReproductorVideo({super.key, required this.url});
+  @override
+  State<ReproductorVideo> createState() => _ReproductorVideoState();
+}
+
+class _ReproductorVideoState extends State<ReproductorVideo> {
+  late VideoPlayerController _videoPlayerController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController,
+      autoPlay: false,
+      looping: false,
+      errorBuilder: (context, errorMessage) {
+        return Center(child: Text(errorMessage, style: const TextStyle(color: Colors.white)));
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Chewie(controller: _chewieController!);
   }
 }
