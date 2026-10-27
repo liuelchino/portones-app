@@ -669,4 +669,6 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
           ),
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const
+           actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
+  }
+}
