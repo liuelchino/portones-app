@@ -420,7 +420,9 @@ class _PantallaAdminState extends State<PantallaAdmin> {
       ),
     );
   }
-}class PantallaGestionPortones extends StatelessWidget {
+}
+
+class PantallaGestionPortones extends StatelessWidget {
   final String edificioId;
   final Map<String, dynamic> edificioData;
   const PantallaGestionPortones({super.key, required this.edificioId, required this.edificioData});
@@ -459,9 +461,7 @@ class _PantallaAdminState extends State<PantallaAdmin> {
       ),
     );
   }
-}
-
-class PantallaNuevoPorton extends StatefulWidget {
+}class PantallaNuevoPorton extends StatefulWidget {
   final String edificioId;
   const PantallaNuevoPorton({super.key, required this.edificioId});
   @override
@@ -673,9 +673,7 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
     );
   }
-}
-
-class ReproductorVideo extends StatefulWidget {
+}class ReproductorVideo extends StatefulWidget {
   final String url;
   const ReproductorVideo({super.key, required this.url});
   @override
@@ -812,9 +810,123 @@ class _PantallaDetallePortonState extends State<PantallaDetallePorton> {
                     return Image.network(url, width: 100, height: 100, fit: BoxFit.cover);
                   }).toList(),
                 ),
+              const SizedBox(height: 30),
+              const Text('🩺 Historial Clínico:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaHistorialClinico(portonId: widget.portonId))),
+                icon: const Icon(Icons.history),
+                label: const Text('Ver Historial Completo'),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class PantallaHistorialClinico extends StatefulWidget {
+  final String portonId;
+  const PantallaHistorialClinico({super.key, required this.portonId});
+  @override
+  State<PantallaHistorialClinico> createState() => _PantallaHistorialClinicoState();
+}
+
+class _PantallaHistorialClinicoState extends State<PantallaHistorialClinico> {
+  final _descripcion = TextEditingController();
+  final _fecha = TextEditingController();
+  String _tipoSeleccionado = 'Mantenimiento';
+  bool _guardando = false;
+
+  final List<String> _tipos = ['Mantenimiento', 'Reparación', 'Falla', 'Instalación', 'Nota'];
+
+  Future<void> _guardarEvento() async {
+    if (_descripcion.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Escribe una descripción')));
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await FirebaseFirestore.instance.collection('historial').add({
+        'portonId': widget.portonId,
+        'tipo': _tipoSeleccionado,
+        'descripcion': _descripcion.text.trim(),
+        'fecha': _fecha.text.trim().isEmpty ? DateTime.now().toString() : _fecha.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Evento registrado')));
+        _descripcion.clear();
+        _fecha.clear();
+        setState(() => _tipoSeleccionado = 'Mantenimiento');
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _guardando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Historial Clínico')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _tipoSeleccionado,
+                      items: _tipos.map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo))).toList(),
+                      onChanged: (val) => setState(() => _tipoSeleccionado = val!),
+                      decoration: const InputDecoration(labelText: 'Tipo de evento', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(controller: _fecha, decoration: const InputDecoration(labelText: 'Fecha (opcional, ej: 12/03/2025)', border: OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    TextField(controller: _descripcion, maxLines: 3, decoration: const InputDecoration(labelText: 'Descripción (ej: Cambio de rodamientos)', border: OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _guardando ? null : _guardarEvento, child: _guardando ? const CircularProgressIndicator() : const Text('GUARDAR EVENTO'))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Align(alignment: Alignment.centerLeft, child: Text('Eventos anteriores:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('historial').where('portonId', isEqualTo: widget.portonId).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final eventos = snapshot.data!.docs;
+                if (eventos.isEmpty) return const Center(child: Text('No hay eventos registrados aún.'));
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: eventos.length,
+                  itemBuilder: (context, index) {
+                    final data = eventos[index].data() as Map<String, dynamic>;
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.build_circle, color: Colors.blue),
+                        title: Text('${data['tipo']} - ${data['fecha']}'),
+                        subtitle: Text(data['descripcion'] ?? ''),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
