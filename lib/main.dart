@@ -63,9 +63,7 @@ class PantallaInicio extends StatelessWidget {
       ),
     );
   }
-}
-
-class LoginAdmin extends StatefulWidget {
+}class LoginAdmin extends StatefulWidget {
   const LoginAdmin({super.key});
   @override
   State<LoginAdmin> createState() => _LoginAdminState();
@@ -119,16 +117,19 @@ class PantallaCliente extends StatefulWidget {
 }
 
 class _PantallaClienteState extends State<PantallaCliente> {
-  final _direccionController = TextEditingController();
+  final _nombreController = TextEditingController();
   final _claveController = TextEditingController();
   bool _cargando = false;
 
   Future<void> _ingresar() async {
     setState(() => _cargando = true);
     try {
-      final query = await FirebaseFirestore.instance.collection('edificios').where('direccion', isEqualTo: _direccionController.text.trim()).where('clave_acceso', isEqualTo: _claveController.text.trim()).get();
+      final query = await FirebaseFirestore.instance.collection('edificios')
+          .where('nombre', isEqualTo: _nombreController.text.trim())
+          .where('clave_acceso', isEqualTo: _claveController.text.trim()).get();
+
       if (query.docs.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección o clave incorrecta')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombre o clave incorrecta')));
       } else {
         if (mounted) Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaReporte(edificioId: query.docs.first.id, edificioData: query.docs.first.data())));
       }
@@ -147,7 +148,7 @@ class _PantallaClienteState extends State<PantallaCliente> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(controller: _direccionController, decoration: const InputDecoration(labelText: 'Dirección del edificio', border: OutlineInputBorder())),
+            TextField(controller: _nombreController, decoration: const InputDecoration(labelText: 'Nombre del Edificio (Ej: Torre Costanera)', border: OutlineInputBorder())),
             const SizedBox(height: 15),
             TextField(controller: _claveController, decoration: const InputDecoration(labelText: 'Clave de acceso', border: OutlineInputBorder()), obscureText: true),
             const SizedBox(height: 30),
@@ -157,17 +158,16 @@ class _PantallaClienteState extends State<PantallaCliente> {
       ),
     );
   }
-}
-
-class PantallaReporte extends StatelessWidget {
+}class PantallaReporte extends StatelessWidget {
   final String edificioId;
   final Map<String, dynamic> edificioData;
   const PantallaReporte({super.key, required this.edificioId, required this.edificioData});
 
   @override
   Widget build(BuildContext context) {
+    final String titulo = edificioData['nombre'] ?? edificioData['direccion'] ?? 'Edificio';
     return Scaffold(
-      appBar: AppBar(title: Text(edificioData['direccion'] ?? 'Edificio')),
+      appBar: AppBar(title: Text(titulo)),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('solicitudes').where('edificioId', isEqualTo: edificioId).snapshots(),
         builder: (context, snapshot) {
@@ -206,7 +206,7 @@ class PantallaReporte extends StatelessWidget {
                         if (listaMensajes.isNotEmpty) ...[
                           const Divider(),
                           const Text('💬 Conversación:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                          ...listaMensajes.map((msg) => Text('${msg['emisor']}: ${msg['texto']}', style: const TextStyle(color: Colors.blue))),
+                          ...listaMensajes.map((msg) => Text('${msg['emisor']}: ${msg['texto']}', style: TextStyle(color: msg['emisor'] == 'Admin' ? Colors.blue : Colors.black))),
                         ]
                       ],
                     ),
@@ -342,9 +342,7 @@ class _PantallaFormularioReclamoState extends State<PantallaFormularioReclamo> {
       ),
     );
   }
-}
-
-class PantallaAdmin extends StatefulWidget {
+}class PantallaAdmin extends StatefulWidget {
   const PantallaAdmin({super.key});
   @override
   State<PantallaAdmin> createState() => _PantallaAdminState();
@@ -402,7 +400,7 @@ class _PantallaAdminState extends State<PantallaAdmin> {
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: const Icon(Icons.apartment, color: Colors.blue),
-                      title: Text(data['direccion'] ?? 'Sin dirección'),
+                      title: Text(data['nombre'] ?? data['direccion'] ?? 'Sin nombre'),
                       subtitle: Text(data['ciudad'] ?? ''),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaGestionPortones(edificioId: doc.id, edificioData: data))),
@@ -425,8 +423,9 @@ class PantallaGestionPortones extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String titulo = edificioData['nombre'] ?? edificioData['direccion'] ?? 'Portones';
     return Scaffold(
-      appBar: AppBar(title: Text('Portones: ${edificioData['direccion']}')),
+      appBar: AppBar(title: Text('Portones: $titulo')),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaNuevoPorton(edificioId: edificioId))),
         child: const Icon(Icons.add),
@@ -447,6 +446,7 @@ class PantallaGestionPortones extends StatelessWidget {
                   leading: const Icon(Icons.garage, color: Colors.blue),
                   title: Text(data['ubicacion'] ?? 'Sin nombre'),
                   subtitle: Text('Marca: ${data['marca'] ?? '-'} | Modelo: ${data['modelo'] ?? '-'}'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaDetallePorton(portonId: portones[index].id, portonData: data))),
                 ),
               );
             },
@@ -527,6 +527,7 @@ class PantallaNuevoEdificio extends StatefulWidget {
 }
 
 class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
+  final _nombre = TextEditingController();
   final _direccion = TextEditingController();
   final _barrio = TextEditingController();
   final _ciudad = TextEditingController();
@@ -536,13 +537,14 @@ class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
   bool _guardando = false;
 
   Future<void> _guardarEdificio() async {
-    if (_direccion.text.isEmpty || _clave.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dirección y clave obligatorias')));
+    if (_nombre.text.isEmpty || _direccion.text.isEmpty || _clave.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombre, dirección y clave son obligatorios')));
       return;
     }
     setState(() => _guardando = true);
     try {
       await FirebaseFirestore.instance.collection('edificios').add({
+        'nombre': _nombre.text.trim(),
         'direccion': _direccion.text.trim(), 'barrio': _barrio.text.trim(), 'ciudad': _ciudad.text.trim(),
         'clave_acceso': _clave.text.trim(), 'admin_nombre': _adminNombre.text.trim(), 'admin_telefono': _adminTelefono.text.trim(),
       });
@@ -561,6 +563,8 @@ class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          TextField(controller: _nombre, decoration: const InputDecoration(labelText: 'Nombre del Edificio (Ej: Torre Costanera)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
           TextField(controller: _direccion, decoration: const InputDecoration(labelText: 'Dirección', border: OutlineInputBorder())),
           const SizedBox(height: 10),
           TextField(controller: _barrio, decoration: const InputDecoration(labelText: 'Barrio', border: OutlineInputBorder())),
@@ -623,23 +627,32 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
             children: [
               Text('Dirección: ${widget.data['direccion']}'),
               Text('Nombre: ${widget.data['nombre']} ${widget.data['apellido']}'),
-              Text('Problema: ${widget.data['texto']}'),
+              Text('Piso: ${widget.data['piso']} - Dpto: ${widget.data['depto']}'),
+              Text('Teléfono: ${widget.data['telefono']}'),
+              const SizedBox(height: 10),
+              const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.data['texto'] ?? ''),
               if (widget.fotoUrl != null) ...[
                 const SizedBox(height: 10),
-                Image.network(widget.fotoUrl!, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error foto')),
+                const Text('Foto:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Image.network(widget.fotoUrl!, height: 200, errorBuilder: (context, error, stackTrace) => const Text('Error al cargar foto')),
               ],
               if (widget.videoUrl != null) ...[
                 const SizedBox(height: 10),
+                const Text('Video:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
                 SizedBox(height: 250, child: ReproductorVideo(url: widget.videoUrl!)),
               ],
               const Divider(),
               const Text('Cambiar estado:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 children: [
                   ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'pendiente'}); if (mounted) Navigator.pop(context); }, child: const Text('Pendiente')),
                   ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'en proceso'}); if (mounted) Navigator.pop(context); }, child: const Text('En Proceso')),
-                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'}); if (mounted) Navigator.pop(context); }, child: const Text('Resuelto')),
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'}); if (mounted) Navigator.pop(context); }, child : const Text('Resuelto')),
                 ],
               ),
               const Divider(),
@@ -658,7 +671,7 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
           ),
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator .pop(context), child: const Text('Cerrar'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
     );
   }
 }
