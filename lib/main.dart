@@ -63,7 +63,9 @@ class PantallaInicio extends StatelessWidget {
       ),
     );
   }
-}class LoginAdmin extends StatefulWidget {
+}
+
+class LoginAdmin extends StatefulWidget {
   const LoginAdmin({super.key});
   @override
   State<LoginAdmin> createState() => _LoginAdminState();
@@ -210,6 +212,17 @@ class _PantallaClienteState extends State<PantallaCliente> {
                         ]
                       ],
                     ),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => DialogoDetalleAdmin(
+                          data: data,
+                          docId: doc.id,
+                          fotoUrl: data['fotoUrl'],
+                          videoUrl: data['videoUrl'],
+                        ),
+                      );
+                    },
                   ),
                 );
               }).toList(),
@@ -226,7 +239,9 @@ class _PantallaClienteState extends State<PantallaCliente> {
       ),
     );
   }
-}class PantallaFormularioReclamo extends StatefulWidget {
+}
+
+class PantallaFormularioReclamo extends StatefulWidget {
   final String edificioId;
   final String direccion;
   const PantallaFormularioReclamo({super.key, required this.edificioId, required this.direccion});
@@ -455,9 +470,7 @@ class PantallaGestionPortones extends StatelessWidget {
       ),
     );
   }
-}
-
-class PantallaNuevoPorton extends StatefulWidget {
+}class PantallaNuevoPorton extends StatefulWidget {
   final String edificioId;
   const PantallaNuevoPorton({super.key, required this.edificioId});
   @override
@@ -584,9 +597,7 @@ class _PantallaNuevoEdificioState extends State<PantallaNuevoEdificio> {
       ),
     );
   }
-}
-
-class DialogoDetalleAdmin extends StatefulWidget {
+}class DialogoDetalleAdmin extends StatefulWidget {
   final Map<String, dynamic> data;
   final String docId;
   final String? fotoUrl;
@@ -605,7 +616,7 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
     setState(() => _enviandoRespuesta = true);
     try {
       await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({
-        'conversacion': FieldValue.arrayUnion([{'emisor': 'Admin', 'texto': _respuestaController.text.trim(), 'fecha': FieldValue.serverTimestamp()}])
+        'conversacion': FieldValue.arrayUnion([{'emisor': 'Admin', 'texto': _respuestaController.text.trim()}])
       });
       _respuestaController.clear();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mensaje enviado')));
@@ -652,7 +663,7 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
                 children: [
                   ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'pendiente'}); if (mounted) Navigator.pop(context); }, child: const Text('Pendiente')),
                   ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'en proceso'}); if (mounted) Navigator.pop(context); }, child: const Text('En Proceso')),
-                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'}); if (mounted) Navigator.pop(context); }, child : const Text('Resuelto')),
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () async { await FirebaseFirestore.instance.collection('solicitudes').doc(widget.docId).update({'estado': 'resuelto'}); if (mounted) Navigator.pop(context); }, child: const Text('Resuelto')),
                 ],
               ),
               const Divider(),
@@ -674,9 +685,7 @@ class _DialogoDetalleAdminState extends State<DialogoDetalleAdmin> {
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
     );
   }
-}
-
-class ReproductorVideo extends StatefulWidget {
+}class ReproductorVideo extends StatefulWidget {
   final String url;
   const ReproductorVideo({super.key, required this.url});
   @override
