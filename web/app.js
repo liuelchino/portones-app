@@ -2,14 +2,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// ⚠️ CONFIGURACIÓN DE FIREBASE (Reemplazá con tus datos)
+// ⚠️ CONFIGURACIÓN DE FIREBASE (Tus datos reales)
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
+  apiKey: "AIzaSyDdvm-85YNbY7lSAwiiB16eEcoYBsFQ954",
   authDomain: "portones-asistencia.firebaseapp.com",
   projectId: "portones-asistencia",
-  storageBucket: "portones-asistencia.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  storageBucket: "portones-asistencia.firebasestorage.app",
+  messagingSenderId: "353034031865",
+  appId: "1:353034031865:web:2875fd6ec637b830630828",
+  measurementId: "G-02XHM6R2H8"
 };
 
 // Inicializamos Firebase
