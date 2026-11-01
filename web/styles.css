@@ -1,0 +1,229 @@
+/* --- ESTILOS GENERALES --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f4f4f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* --- ENCABEZADO --- */
+header {
+    background-color: #1a1a1a;
+    color: white;
+    padding: 1rem 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #d4af37; /* Dorado elegante */
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+nav a:hover {
+    color: #d4af37;
+}
+
+.btn-whatsapp {
+    background-color: #25D366;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-whatsapp:hover {
+    background-color: #1ebe5d;
+    color: white;
+}
+
+/* --- HERO SECTION --- */
+.hero {
+    height: 60vh;
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1558036117-15d82a90b9b1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80') center/cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+}
+
+.hero-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #d4af37;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* --- BOTONES --- */
+.btn-primary {
+    background-color: #d4af37;
+    color: #1a1a1a;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.3s, transform 0.2s;
+    display: inline-block;
+}
+
+.btn-primary:hover {
+    background-color: #b5952f;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: #666;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* --- PORTAL SECTION --- */
+.portal-section {
+    padding: 4rem 5%;
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.portal-section h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #1a1a1a;
+}
+
+.portal-section p {
+    margin-bottom: 2rem;
+    color: #666;
+}
+
+/* --- TARJETAS (CARDS) --- */
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.card h3, .card h4 {
+    margin-bottom: 1rem;
+    color: #1a1a1a;
+    border-bottom: 2px solid #d4af37;
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+/* --- FORMULARIOS --- */
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    background-color: #f9f9f9;
+}
+
+input:focus, textarea:focus {
+    outline: none;
+    border-color: #d4af37;
+    background-color: #fff;
+}
+
+.row {
+    display: flex;
+    gap: 15px;
+}
+
+.row input {
+    flex: 1;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* --- UTILIDADES --- */
+.hidden {
+    display: none !important;
+}
+
+.error-msg {
+    color: #e74c3c;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+#lista-eventos {
+    margin-top: 15px;
+}
+
+.evento-item {
+    background: #f9f9f9;
+    padding: 15px;
+    border-left: 4px solid #d4af37;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.evento-item p {
+    margin: 5px 0;
+    color: #333;
+}
+
+.evento-item .respuesta {
+    color: #2980b9;
+    font-weight: bold;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+    .hero-content h1 { font-size: 2rem; }
+    .row { flex-direction: column; gap: 0; }
+    header { flex-direction: column; gap: 10px; }
+    nav a { margin: 0 10px; }
+}
