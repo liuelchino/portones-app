@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valquiria - Asistencia de Portones</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- ENCABEZADO -->
+    <header>
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i> VALQUIRIA
+        </div>
+        <nav>
+            <a href="#inicio">Inicio</a>
+            <a href="#portal">Portal Clientes</a>
+            <a href="https://wa.me/5493795036870" target="_blank" class="btn-whatsapp">
+                <i class="fab fa-whatsapp"></i> Contacto
+            </a>
+        </nav>
+    </header>
+
+    <!-- HERO SECTION (Presentación) -->
+    <section id="inicio" class="hero">
+        <div class="hero-content">
+            <h1>VALQUIRIA RESIDENCE</h1>
+            <p>Asistencia técnica profesional para portones automáticos en Corrientes Capital.</p>
+            <a href="#portal" class="btn-primary">Acceder al Portal</a>
+        </div>
+    </section>
+
+    <!-- PORTAL DE CLIENTES -->
+    <section id="portal" class="portal-section">
+        <h2>Portal de Clientes</h2>
+        <p>Ingresá con el nombre de tu edificio y la clave de acceso para reportar un problema o ver tus reclamos.</p>
+        
+        <!-- Formulario de Login -->
+        <div id="login-box" class="card">
+            <h3>Ingreso de Vecinos</h3>
+            <input type="text" id="login-nombre" placeholder="Nombre del Edificio (Ej: Torre Costanera)">
+            <input type="password" id="login-clave" placeholder="Clave de acceso">
+            <button onclick="ingresarCliente()" class="btn-primary">INGRESAR</button>
+            <p id="login-error" class="error-msg"></p>
+        </div>
+
+        <!-- Panel del Cliente (oculto al principio) -->
+        <div id="panel-cliente" class="hidden">
+            <h3 id="nombre-edificio-panel">Edificio</h3>
+            
+            <!-- Formulario de Nuevo Reclamo -->
+            <div class="card">
+                <h4>Reportar un Problema</h4>
+                <input type="text" id="reclamo-nombre" placeholder="Tu Nombre">
+                <input type="text" id="reclamo-apellido" placeholder="Tu Apellido">
+                <div class="row">
+                    <input type="text" id="reclamo-piso" placeholder="Piso">
+                    <input type="text" id="reclamo-depto" placeholder="Depto">
+                </div>
+                <input type="text" id="reclamo-telefono" placeholder="Teléfono de contacto">
+                <textarea id="reclamo-texto" placeholder="Descripción del problema..."></textarea>
+                <button onclick="enviarReclamo()" class="btn-primary">ENVIAR SOLICITUD</button>
+            </div>
+
+            <!-- Lista de Últimos Eventos -->
+            <div class="card">
+                <h4>Últimos Eventos</h4>
+                <div id="lista-eventos">
+                    <!-- Acá se cargarán los reclamos -->
+                </div>
+            </div>
+            
+            <button onclick="cerrarSesion()" class="btn-secondary">Cerrar Sesión</button>
+        </div>
+    </section>
+
+    <!-- SCRIPTS -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
